@@ -270,6 +270,7 @@ class TelemetryGUI(QWidget):
             self.avian = Avian(None)
 
         self.displayed_data = {}
+
         # OPTIONS
         self.should_show_plots = True
         self.use_fake_data = False
@@ -405,7 +406,7 @@ class TelemetryGUI(QWidget):
         min_max_label.setFont(min_max_font)
         layout.addWidget(min_max_label)
 
-        if self.should_show_plots:
+        if self.should_show_plots and measurement != SIGNAL_STRENGTH:
             plot = pg.PlotWidget()
             # plot.setMaximumHeight(50)
             layout.addWidget(plot)
@@ -474,10 +475,15 @@ class TelemetryGUI(QWidget):
         # self.should_show_plots = self.displayed_data[measurement][
         #     'ax'] != None if esc == None else self.displayed_data[esc][measurement]['ax'] != None
 
-        if self.should_show_plots:
-            data = self.avian.get_last_n_values(
-                measurement, num_values_to_plot, esc
-            )
+        measurements_to_plot_all = [CONSUMPTION,
+                                    BATTERY_VOLTAGE, TOTAL_CONSUMPTION, TEMP]
+        if self.should_show_plots and measurement != SIGNAL_STRENGTH:
+            if measurement in measurements_to_plot_all:
+                data = self.avian.get_all_values(measurement, esc)
+            else:
+                data = self.avian.get_last_n_values(
+                    measurement, self.num_values_to_plot, esc
+                )
             if esc == None:
                 self.displayed_data[measurement]['data'] = data
                 self.displayed_data[measurement]['plot'].clear()
