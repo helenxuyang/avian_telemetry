@@ -273,6 +273,7 @@ class TelemetryGUI(QWidget):
         # OPTIONS
         self.should_show_plots = True
         self.use_fake_data = False
+        self.num_values_to_plot = 50
 
         self.initialize_gui()
 
@@ -406,7 +407,7 @@ class TelemetryGUI(QWidget):
 
         if self.should_show_plots:
             plot = pg.PlotWidget()
-            plot.setMaximumHeight(50)
+            # plot.setMaximumHeight(50)
             layout.addWidget(plot)
         else:
             plot = None
@@ -475,7 +476,7 @@ class TelemetryGUI(QWidget):
 
         if self.should_show_plots:
             data = self.avian.get_last_n_values(
-                measurement, 50, esc
+                measurement, num_values_to_plot, esc
             )
             if esc == None:
                 self.displayed_data[measurement]['data'] = data
