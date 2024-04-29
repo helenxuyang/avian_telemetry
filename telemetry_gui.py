@@ -145,6 +145,10 @@ class Avian():
 
     def add_value(self, measurement, value, esc=None):
         obj = (self.data if esc == None else self.data[esc])
+
+        # TODO: remove temp spikes like < room temp
+        # if measurement == TEMP and value < 20:
+
         obj[measurement]['values'].append(value)
         min_value = self.get_min_value(measurement, esc)
         if min_value == None or value < min_value:
@@ -225,7 +229,7 @@ class Avian():
             current = merge_bytes(esc_data[4], esc_data[5]) / scale_val * 50
             delta_time_hours = (
                 now_timestamp - self.data_timestamps[-1]).total_seconds() / 3600
-            consumption = current * delta_time_hours
+            consumption = current * 1000 * delta_time_hours
             parsed_esc_data[esc] = {
                 TEMP: merge_bytes(esc_data[0], esc_data[1]) / scale_val * 30,
                 VOLTAGE: merge_bytes(esc_data[2], esc_data[3]) / scale_val * 20,
@@ -270,10 +274,11 @@ class TelemetryGUI(QWidget):
             self.avian = Avian(None)
 
         self.displayed_data = {}
+        self.use_fake_data = sys.argv[1] if len(sys.argv) >= 2 else False
+        print('using fake data')
 
         # OPTIONS
         self.should_show_plots = True
-        self.use_fake_data = True
         self.num_values_to_plot = 50
 
         self.initialize_gui()
@@ -344,6 +349,8 @@ class TelemetryGUI(QWidget):
             robot_column, SIGNAL_STRENGTH, 'dBm'
         )
 
+        # TODO: add clear data button
+
         dropdown_title = QLabel("COM Port")
         dropdown_title.setFont(measurement_font)
         robot_column.addWidget(dropdown_title)
@@ -366,7 +373,6 @@ class TelemetryGUI(QWidget):
 
     def update_gui(self):
         if (self.use_fake_data):
-            print('using fake data')
             for measurement in self.avian.get_robot_measurement_names():
                 self.avian.add_value(measurement, random.randint(-100, 0)
                                      if measurement == SIGNAL_STRENGTH
