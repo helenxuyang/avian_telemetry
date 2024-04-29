@@ -219,7 +219,7 @@ class Avian():
                 VOLTAGE: merge_bytes(esc_data[1], esc_data[2]) / 100,
                 CURRENT: merge_bytes(esc_data[3], esc_data[4]) / 100,
                 CONSUMPTION: merge_bytes(esc_data[5], esc_data[6]),
-                RPM: merge_bytes(esc_data[7], esc_data[8]) * 100
+                RPM: merge_bytes(esc_data[7], esc_data[8]) * 100 / 6
             }
 
         for esc in [WEAPON_ESC, ARM_ESC]:
@@ -372,10 +372,10 @@ class TelemetryGUI(QWidget):
         self.timer.start(100)
 
     def reinitialize_gui(self):
-        # if self.main_layout is not None:
-        #     while self.main_layout.count():
-        #         item = self.main_layout.takeAt(0)
-        #         self.main_layout.removeItem(item)
+        if self.main_layout is not None:
+            while self.main_layout.count():
+                item = self.main_layout.takeAt(0)
+                self.main_layout.removeItem(item)
         self.timer.stop()
 
         self.initialize_gui()
@@ -420,14 +420,10 @@ class TelemetryGUI(QWidget):
         min_max_label.setFont(min_max_font)
         layout.addWidget(min_max_label)
 
-        if self.should_show_plots:
-            fig, ax = plt.subplots()
-            canvas = FigureCanvas(fig)
-            layout.addWidget(canvas)
-        else:
-            fig = None
-            ax = None
-            canvas = None
+        fig, ax = plt.subplots()
+        canvas = FigureCanvas(fig)
+        # if self.should_show_plots:
+        layout.addWidget(canvas)
 
         display_data = {'value_label': value_label, 'units': units, 'min_max_label': min_max_label,
                         'fig': fig, 'ax': ax, 'canvas': canvas, 'data': data}
