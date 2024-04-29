@@ -216,7 +216,7 @@ class Avian():
                 VOLTAGE: merge_bytes(esc_data[1], esc_data[2]) / 100,
                 CURRENT: merge_bytes(esc_data[3], esc_data[4]) / 100,
                 CONSUMPTION: merge_bytes(esc_data[5], esc_data[6]),
-                RPM: merge_bytes(esc_data[7], esc_data[8]) * 100 / 6
+                RPM: int(merge_bytes(esc_data[7], esc_data[8]) * 100 / 6)
             }
 
         for esc in [WEAPON_ESC, ARM_ESC]:
@@ -231,8 +231,8 @@ class Avian():
                 VOLTAGE: merge_bytes(esc_data[2], esc_data[3]) / scale_val * 20,
                 CURRENT: current,
                 CONSUMPTION: consumption,
-                RPM: merge_bytes(
-                    esc_data[6], esc_data[7]) / scale_val * 20416.66 / 7
+                RPM: int(merge_bytes(
+                    esc_data[6], esc_data[7]) / scale_val * 20416.66 / 7)
             }
 
         for esc in parsed_esc_data:
