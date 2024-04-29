@@ -1,11 +1,10 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox, QCheckBox
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import matplotlib.pyplot as plt
+import pyqtgraph as pg
 import csv
 import serial
 from serial.tools import list_ports
@@ -71,14 +70,12 @@ class SerialReaderThread(QThread):
 
 
 class Avian():
-    def __init__(self, serial_port, use_fake_data=False):
+    def __init__(self, serial_port):
         self.data = {}
         if not serial_port == None:
             self.serial_reader = SerialReaderThread(serial_port)
             self.serial_reader.new_data.connect(self.handle_data)
             self.serial_reader.start()
-
-        self.use_fake_data = use_fake_data
 
         self.data_timestamps = []
 
@@ -273,9 +270,9 @@ class TelemetryGUI(QWidget):
             self.avian = Avian(None)
 
         self.displayed_data = {}
-        self.plots_checkbox = QCheckBox("Show plots")
-        self.plots_checkbox.stateChanged.connect(self.on_checkbox_toggle)
-        self.should_show_plots = False
+        # OPTIONS
+        self.should_show_plots = True
+        self.use_fake_data = True
 
         self.initialize_gui()
 
@@ -283,10 +280,6 @@ class TelemetryGUI(QWidget):
     def on_select_port(self, index):
         selected_port = self.port_names[index]
         self.avian = Avian(selected_port)
-
-    def on_checkbox_toggle(self):
-        self.should_show_plots = self.plots_checkbox.isChecked()
-        self.reinitialize_gui()
 
     def initialize_gui(self):
         self.main_layout = QHBoxLayout()
@@ -303,7 +296,7 @@ class TelemetryGUI(QWidget):
             esc_square.addWidget(esc_label)
 
             measurement_grid = QGridLayout()
-            measurement_grid.setSpacing(8)
+            measurement_grid.setSpacing(4)
 
             displayed_measurements = self.avian.get_displayed_esc_measurement_names()
             displayed_measurement_units = self.avian.get_displayed_esc_measurement_units()
@@ -354,8 +347,6 @@ class TelemetryGUI(QWidget):
         robot_column.addWidget(dropdown_title)
         robot_column.addWidget(self.com_port_dropdown)
 
-        robot_column.addWidget(self.plots_checkbox)
-
         export_button = QPushButton("Export to CSV")
         export_button.clicked.connect(self.avian.export_to_csv)
         robot_column.addWidget(export_button)
@@ -371,21 +362,14 @@ class TelemetryGUI(QWidget):
         self.timer.timeout.connect(self.update_gui)
         self.timer.start(100)
 
-    def reinitialize_gui(self):
-        if self.main_layout is not None:
-            while self.main_layout.count():
-                item = self.main_layout.takeAt(0)
-                self.main_layout.removeItem(item)
-        self.timer.stop()
-
-        self.initialize_gui()
-
     def update_gui(self):
-        if (self.avian.use_fake_data):
+        if (self.use_fake_data):
             print('using fake data')
             for measurement in self.avian.get_robot_measurement_names():
                 self.avian.add_value(measurement, random.randint(-100, 0)
-                                     if measurement == SIGNAL_STRENGTH else random.randint(0, 100))
+                                     if measurement == SIGNAL_STRENGTH
+                                     else random.randint(0, 100)
+                                     )
             for esc in self.avian.get_esc_names():
                 for measurement in self.avian.get_displayed_esc_measurement_names():
                     self.avian.add_value(
@@ -421,16 +405,14 @@ class TelemetryGUI(QWidget):
         layout.addWidget(min_max_label)
 
         if self.should_show_plots:
-            fig, ax = plt.subplots()
-            canvas = FigureCanvas(fig)
-            layout.addWidget(canvas)
+            plot = pg.PlotWidget()
+            plot.setMaximumHeight(50)
+            layout.addWidget(plot)
         else:
-            fig = None
-            ax = None
-            canvas = None
+            plot = None
 
         display_data = {'value_label': value_label, 'units': units, 'min_max_label': min_max_label,
-                        'fig': fig, 'ax': ax, 'canvas': canvas, 'data': data}
+                        'plot': plot, 'data': data}
         if esc == None:
             self.displayed_data[measurement] = display_data
         else:
@@ -488,27 +470,25 @@ class TelemetryGUI(QWidget):
                 min_max_text
             )
 
-        update_plot = self.displayed_data[measurement][
-            'ax'] != None if esc == None else self.displayed_data[esc][measurement]['ax'] != None
+        # self.should_show_plots = self.displayed_data[measurement][
+        #     'ax'] != None if esc == None else self.displayed_data[esc][measurement]['ax'] != None
 
-        if update_plot:
+        if self.should_show_plots:
             data = self.avian.get_last_n_values(
-                measurement, 100, esc
+                measurement, 50, esc
             )
             if esc == None:
                 self.displayed_data[measurement]['data'] = data
-                self.displayed_data[measurement]['ax'].clear()
-                self.displayed_data[measurement]['ax'].plot(
+                self.displayed_data[measurement]['plot'].clear()
+                self.displayed_data[measurement]['plot'].plot(
                     self.displayed_data[measurement]['data']
                 )
-                self.displayed_data[measurement]['canvas'].draw()
             else:
                 self.displayed_data[esc][measurement]['data'] = data
-                self.displayed_data[esc][measurement]['ax'].clear()
-                self.displayed_data[esc][measurement]['ax'].plot(
+                self.displayed_data[esc][measurement]['plot'].clear()
+                self.displayed_data[esc][measurement]['plot'].plot(
                     self.displayed_data[esc][measurement]['data']
                 )
-                self.displayed_data[esc][measurement]['canvas'].draw()
 
     # def closeEvent(self, event):
         # self.avian.export_to_csv()f
