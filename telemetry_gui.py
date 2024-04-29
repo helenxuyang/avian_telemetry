@@ -232,7 +232,7 @@ class Avian():
                 CURRENT: current,
                 CONSUMPTION: consumption,
                 RPM: merge_bytes(
-                    esc_data[6], esc_data[7]) / scale_val * 20416.66
+                    esc_data[6], esc_data[7]) / scale_val * 20416.66 / 7
             }
 
         for esc in parsed_esc_data:
