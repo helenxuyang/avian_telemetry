@@ -272,7 +272,7 @@ class TelemetryGUI(QWidget):
         self.displayed_data = {}
         # OPTIONS
         self.should_show_plots = True
-        self.use_fake_data = True
+        self.use_fake_data = False
 
         self.initialize_gui()
 
