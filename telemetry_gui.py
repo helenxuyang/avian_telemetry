@@ -420,10 +420,14 @@ class TelemetryGUI(QWidget):
         min_max_label.setFont(min_max_font)
         layout.addWidget(min_max_label)
 
-        fig, ax = plt.subplots()
-        canvas = FigureCanvas(fig)
-        # if self.should_show_plots:
-        layout.addWidget(canvas)
+        if self.should_show_plots:
+            fig, ax = plt.subplots()
+            canvas = FigureCanvas(fig)
+            layout.addWidget(canvas)
+        else:
+            fig = None
+            ax = None
+            canvas = None
 
         display_data = {'value_label': value_label, 'units': units, 'min_max_label': min_max_label,
                         'fig': fig, 'ax': ax, 'canvas': canvas, 'data': data}
