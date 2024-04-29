@@ -273,7 +273,7 @@ class TelemetryGUI(QWidget):
 
         # OPTIONS
         self.should_show_plots = True
-        self.use_fake_data = False
+        self.use_fake_data = True
         self.num_values_to_plot = 50
 
         self.initialize_gui()
@@ -407,6 +407,8 @@ class TelemetryGUI(QWidget):
         layout.addWidget(min_max_label)
 
         if self.should_show_plots and measurement != SIGNAL_STRENGTH:
+            pg.setConfigOption('background', 'w')
+            # pg.setConfigOption('foreground', 'k')
             plot = pg.PlotWidget()
             # plot.setMaximumHeight(50)
             layout.addWidget(plot)
@@ -484,17 +486,21 @@ class TelemetryGUI(QWidget):
                 data = self.avian.get_last_n_values(
                     measurement, self.num_values_to_plot, esc
                 )
+
+            pen_options = pg.mkPen('k', width=1)
             if esc == None:
                 self.displayed_data[measurement]['data'] = data
                 self.displayed_data[measurement]['plot'].clear()
                 self.displayed_data[measurement]['plot'].plot(
-                    self.displayed_data[measurement]['data']
+                    self.displayed_data[measurement]['data'],
+                    pen=pen_options
                 )
             else:
                 self.displayed_data[esc][measurement]['data'] = data
                 self.displayed_data[esc][measurement]['plot'].clear()
                 self.displayed_data[esc][measurement]['plot'].plot(
-                    self.displayed_data[esc][measurement]['data']
+                    self.displayed_data[esc][measurement]['data'],
+                    pen=pen_options
                 )
 
     # def closeEvent(self, event):
