@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox, QCheckBox
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal
 
@@ -30,7 +30,7 @@ TEMP = 'Temp'
 RPM = 'RPM'
 CURRENT = 'Current'
 CONSUMPTION = 'Consumption'
-VOLTAGE = 'Voltage'  # TODO: add saving voltage for exported logs, not GUI tho
+VOLTAGE = 'Voltage'
 
 BATTERY_VOLTAGE = 'Battery Voltage'
 TOTAL_CURRENT = 'Total Current'
@@ -270,22 +270,30 @@ class TelemetryGUI(QWidget):
         if len(self.port_names) > 0:
             self.avian = Avian(self.port_names[0])
         else:
-            self.avian = Avian(None, True)
+            self.avian = Avian(None)
 
         self.displayed_data = {}
+        self.plots_checkbox = QCheckBox("Show plots")
+        self.plots_checkbox.stateChanged.connect(self.on_checkbox_toggle)
+        self.should_show_plots = False
 
         self.initialize_gui()
 
-    def selection_changed(self, index):
+    # TODO: hook up properly
+    def on_select_port(self, index):
         selected_port = self.port_names[index]
         self.avian = Avian(selected_port)
 
+    def on_checkbox_toggle(self):
+        self.should_show_plots = self.plots_checkbox.isChecked()
+        self.reinitialize_gui()
+
     def initialize_gui(self):
-        main_layout = QHBoxLayout()
-        self.setLayout(main_layout)
+        self.main_layout = QHBoxLayout()
+        self.setLayout(self.main_layout)
 
         esc_layout = QGridLayout()
-        main_layout.addLayout(esc_layout)
+        self.main_layout.addLayout(esc_layout)
 
         for esc_index, esc_name in enumerate(self.avian.get_esc_names()):
             esc_square = QVBoxLayout()
@@ -322,7 +330,7 @@ class TelemetryGUI(QWidget):
 
         # right side
         robot_column = QVBoxLayout()
-        main_layout.addLayout(robot_column)
+        self.main_layout.addLayout(robot_column)
 
         avian_label = QLabel("Colossal Avian")
         avian_label.setFont(avian_font)
@@ -346,13 +354,15 @@ class TelemetryGUI(QWidget):
         robot_column.addWidget(dropdown_title)
         robot_column.addWidget(self.com_port_dropdown)
 
+        robot_column.addWidget(self.plots_checkbox)
+
         export_button = QPushButton("Export to CSV")
         export_button.clicked.connect(self.avian.export_to_csv)
         robot_column.addWidget(export_button)
 
         # flex
-        main_layout.setStretch(0, 8)
-        main_layout.setStretch(1, 2)
+        self.main_layout.setStretch(0, 8)
+        self.main_layout.setStretch(1, 2)
 
         self.setWindowTitle('Colossal Avian')
         self.setGeometry(100, 100, 500, 300)
@@ -360,6 +370,15 @@ class TelemetryGUI(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_gui)
         self.timer.start(100)
+
+    def reinitialize_gui(self):
+        # if self.main_layout is not None:
+        #     while self.main_layout.count():
+        #         item = self.main_layout.takeAt(0)
+        #         self.main_layout.removeItem(item)
+        self.timer.stop()
+
+        self.initialize_gui()
 
     def update_gui(self):
         if (self.avian.use_fake_data):
@@ -379,7 +398,7 @@ class TelemetryGUI(QWidget):
             for measurement in self.avian.get_displayed_esc_measurement_names():
                 self.update_label_and_plot(measurement, esc)
 
-    def create_measurement_display(self, layout, measurement, units, esc=None, include_plot=False):
+    def create_measurement_display(self, layout, measurement, units, esc=None):
         name_label = QLabel(measurement)
         name_label.setFont(measurement_font)
         layout.addWidget(name_label)
@@ -401,7 +420,7 @@ class TelemetryGUI(QWidget):
         min_max_label.setFont(min_max_font)
         layout.addWidget(min_max_label)
 
-        if include_plot:
+        if self.should_show_plots:
             fig, ax = plt.subplots()
             canvas = FigureCanvas(fig)
             layout.addWidget(canvas)
@@ -432,7 +451,7 @@ class TelemetryGUI(QWidget):
                 self.displayed_data[measurement]['value_label'].setText(
                     f"{value_text} ({percent}%)"
                 )
-            elif measurement == SIGNAL_STRENGTH:
+            elif measurement == SIGNAL_STRENGTH and value != None:
                 if value < -90:
                     style_sheet = 'background-color: red;'
                 elif value < -80:
@@ -446,12 +465,13 @@ class TelemetryGUI(QWidget):
                 )
 
             self.displayed_data[measurement]['min_max_label'].setText(
-                min_max_text)
+                min_max_text
+            )
         else:
             self.displayed_data[esc][measurement]['value_label'].setText(
                 value_text
             )
-            if measurement == TEMP:
+            if measurement == TEMP and value != None:
                 if value >= 80:
                     style_sheet = 'background-color: red;'
                 elif value >= 70:
