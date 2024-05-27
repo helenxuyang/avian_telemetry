@@ -247,7 +247,7 @@ class Avian():
                     measurement, parsed_esc_data[esc][measurement], esc)
 
         parsed_robot_data = {}
-        parsed_robot_data[BATTERY_VOLTAGE] = parsed_esc_data[DRIVE_ESC_1][VOLTAGE]
+        parsed_robot_data[BATTERY_VOLTAGE] = parsed_esc_data[ARM_ESC][VOLTAGE]
         parsed_robot_data[TOTAL_CURRENT] = sum(
             list(map(lambda esc: parsed_esc_data[esc][CURRENT], self.esc_names)))
         parsed_robot_data[TOTAL_CONSUMPTION] = sum(
@@ -279,6 +279,7 @@ class TelemetryGUI(QWidget):
 
         # OPTIONS
         self.should_show_plots = True
+        self.use_fake_data = False
         self.num_values_to_plot = 50
 
         self.initialize_gui()
