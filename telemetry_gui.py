@@ -63,7 +63,7 @@ class SerialReaderThread(QThread):
 
     def export_raw_data(self):
         now = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-        file_name = f"avian_data_{now}_raw.csv"
+        file_name = f"data/avian_data_{now}_raw.csv"
         with open(file_name, "w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerows(self.raw_data)
@@ -71,7 +71,6 @@ class SerialReaderThread(QThread):
 
 class Avian():
     def __init__(self, serial_port):
-        self.data = {}
         if not serial_port == None:
             self.serial_reader = SerialReaderThread(serial_port)
             self.serial_reader.new_data.connect(self.handle_data)
@@ -83,22 +82,27 @@ class Avian():
         self.esc_measurement_names = [TEMP, RPM, CURRENT, CONSUMPTION, VOLTAGE]
         self.esc_measurement_units = ["°C", "", "A", "mAh", "V"]
 
+        self.active_escs = [WEAPON_ESC, ARM_ESC]
+
+        self.general_data = {}
+        self.esc_data = {}
+
         for esc_name in self.esc_names:
-            esc_data = {}
+            this_esc_data = {}
             for measurement_name in self.esc_measurement_names:
-                esc_data[measurement_name] = {
+                this_esc_data[measurement_name] = {
                     'values': [],
                     'min': None,
                     'max': None,
                 }
-            self.data[esc_name] = esc_data
+            self.esc_data[esc_name] = this_esc_data
 
         self.robot_measurement_names = [
             BATTERY_VOLTAGE, TOTAL_CURRENT, TOTAL_CONSUMPTION, SIGNAL_STRENGTH
         ]
 
         for measurement_name in self.robot_measurement_names:
-            self.data[measurement_name] = {
+            self.general_data[measurement_name] = {
                 'values': [],
                 'min': None,
                 'max': None,
@@ -106,6 +110,9 @@ class Avian():
 
     def get_esc_names(self):
         return self.esc_names
+
+    def get_active_esc_names(self):
+        return self.active_escs
 
     def get_esc_measurement_names(self):
         return self.esc_measurement_names
@@ -122,40 +129,38 @@ class Avian():
     def get_robot_measurement_names(self):
         return self.robot_measurement_names
 
+    def get_measurement_obj(self, measurement, esc=None):
+        return self.general_data[measurement] if esc == None else self.esc_data[esc][measurement]
+
     def get_all_values(self, measurement, esc=None):
-        obj = (self.data if esc == None else self.data[esc])
-        return obj[measurement]['values']
+        return self.get_measurement_obj(measurement, esc)['values']
 
     def get_last_n_values(self, measurement, n, esc=None):
-        obj = (self.data if esc == None else self.data[esc])
-        return obj[measurement]['values'][-n:]
+        return self.get_measurement_obj(measurement, esc)['values'][-n:]
 
     def get_current_value(self, measurement, esc=None):
-        obj = (self.data if esc == None else self.data[esc])
-        values = obj[measurement]['values']
+        values = self.get_measurement_obj(measurement, esc)['values']
         return values[-1] if len(values) > 0 else None
 
     def get_min_value(self, measurement, esc=None):
-        obj = (self.data if esc == None else self.data[esc])
-        return obj[measurement]['min']
+        return self.get_measurement_obj(measurement, esc)['min']
 
     def get_max_value(self, measurement, esc=None):
-        obj = (self.data if esc == None else self.data[esc])
-        return obj[measurement]['max']
+        return self.get_measurement_obj(measurement, esc)['max']
 
     def add_value(self, measurement, value, esc=None):
-        obj = (self.data if esc == None else self.data[esc])
+        obj = self.get_measurement_obj(measurement, esc)
 
         # TODO: remove temp spikes like < room temp
         # if measurement == TEMP and value < 20:
 
-        obj[measurement]['values'].append(value)
+        obj['values'].append(value)
         min_value = self.get_min_value(measurement, esc)
         if min_value == None or value < min_value:
-            obj[measurement]['min'] = value
+            obj['min'] = value
         max_value = self.get_max_value(measurement, esc)
         if max_value == None or value > max_value:
-            obj[measurement]['max'] = value
+            obj['max'] = value
 
     def export_to_csv(self):
         timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
@@ -184,7 +189,7 @@ class Avian():
                     all_values) > i else None)
             csv_data.append(data_row)
 
-        file_name = f"avian_data_{timestamp}.csv"
+        file_name = f"data/avian_data_{timestamp}.csv"
         with open(file_name, "w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerows(csv_data)
@@ -275,11 +280,9 @@ class TelemetryGUI(QWidget):
 
         self.displayed_data = {}
         self.use_fake_data = sys.argv[1] if len(sys.argv) >= 2 else False
-        print('using fake data')
 
         # OPTIONS
         self.should_show_plots = True
-        self.use_fake_data = False
         self.num_values_to_plot = 50
 
         self.initialize_gui()
@@ -296,7 +299,7 @@ class TelemetryGUI(QWidget):
         esc_layout = QGridLayout()
         self.main_layout.addLayout(esc_layout)
 
-        for esc_index, esc_name in enumerate(self.avian.get_esc_names()):
+        for esc_index, esc_name in enumerate(self.avian.get_active_esc_names()):
             esc_square = QVBoxLayout()
 
             esc_label = QLabel(esc_name)
@@ -379,7 +382,7 @@ class TelemetryGUI(QWidget):
                                      if measurement == SIGNAL_STRENGTH
                                      else random.randint(0, 100)
                                      )
-            for esc in self.avian.get_esc_names():
+            for esc in self.avian.get_active_esc_names():
                 for measurement in self.avian.get_displayed_esc_measurement_names():
                     self.avian.add_value(
                         measurement, random.randint(0, 100), esc)
@@ -387,7 +390,7 @@ class TelemetryGUI(QWidget):
         # update labels and plots
         for measurement in self.avian.get_robot_measurement_names():
             self.update_label_and_plot(measurement)
-        for esc in self.avian.get_esc_names():
+        for esc in self.avian.get_active_esc_names():
             for measurement in self.avian.get_displayed_esc_measurement_names():
                 self.update_label_and_plot(measurement, esc)
 
