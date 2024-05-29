@@ -153,17 +153,17 @@ class Avian():
     def add_value(self, measurement, value, esc=None):
         obj = self.get_measurement_obj(measurement, esc)
 
+        # remove spikes by replacing bad data with prev value
         prev_value = self.get_current_value(measurement, esc)
-
-        # remove spikes from bad data
-        temp_out_of_range = (
-            measurement == TEMP and (value < 15 or value > 110))
-        temp_high_delta = (
-            measurement == TEMP and abs(value - prev_value) > 30) if prev_value != None else False
-        voltage_out_of_range = (
-            (measurement == VOLTAGE or measurement == BATTERY_VOLTAGE) and (value < 5 or value > 28))
-        if temp_out_of_range or temp_high_delta or voltage_out_of_range:
-            value = self.get_current_value(measurement, esc)
+        if prev_value != None:
+            temp_out_of_range = (
+                measurement == TEMP and (value < 15 or value > 110))
+            temp_high_delta = (
+                measurement == TEMP and abs(value - prev_value) > 30) if prev_value != None else False
+            voltage_out_of_range = (
+                (measurement == VOLTAGE or measurement == BATTERY_VOLTAGE) and (value < 5 or value > 28))
+            if (temp_out_of_range or temp_high_delta or voltage_out_of_range):
+                value = prev_value
 
         obj['values'].append(value)
 
