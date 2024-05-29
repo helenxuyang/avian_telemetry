@@ -159,7 +159,7 @@ class Avian():
         temp_out_of_range = (
             measurement == TEMP and (value < 15 or value > 110))
         temp_high_delta = (
-            measurement == TEMP and abs(value - prev_value) > 30)
+            measurement == TEMP and abs(value - prev_value) > 30) if prev_value != None else False
         voltage_out_of_range = (
             (measurement == VOLTAGE or measurement == BATTERY_VOLTAGE) and (value < 5 or value > 28))
         if temp_out_of_range or temp_high_delta or voltage_out_of_range:
