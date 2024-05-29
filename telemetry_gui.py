@@ -153,10 +153,12 @@ class Avian():
     def add_value(self, measurement, value, esc=None):
         obj = self.get_measurement_obj(measurement, esc)
 
-        # TODO: remove temp spikes like < room temp
-        # if measurement == TEMP and value < 20:
+        # remove spikes from bad data
+        if (measurement == TEMP and (value < 15 or value > 110)) or (measurement == VOLTAGE and (value < 5 or value > 28)):
+            value = self.get_current_value(measurement, esc)
 
         obj['values'].append(value)
+
         min_value = self.get_min_value(measurement, esc)
         if min_value == None or value < min_value:
             obj['min'] = value
