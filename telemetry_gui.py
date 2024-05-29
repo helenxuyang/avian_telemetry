@@ -71,12 +71,14 @@ class SerialReaderThread(QThread):
 
 class Avian():
     def __init__(self, serial_port):
-        if not serial_port == None:
+        if serial_port != None:
             self.serial_reader = SerialReaderThread(serial_port)
             self.serial_reader.new_data.connect(self.handle_data)
             self.serial_reader.start()
 
         self.data_timestamps = []
+        self.seconds_since_start = []
+        self.start_time = datetime.now()
 
         self.esc_names = [DRIVE_ESC_1, DRIVE_ESC_2, WEAPON_ESC, ARM_ESC]
         self.esc_measurement_names = [TEMP, RPM, CURRENT, CONSUMPTION, VOLTAGE]
@@ -164,9 +166,10 @@ class Avian():
 
     def export_to_csv(self):
         timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+        # TODO: add column for seconds since start
         csv_data = []
 
-        headers = ['Timestamp']
+        headers = ['Timestamp', 'Seconds from start']
         for esc in self.get_esc_names():
             for measurement in self.get_esc_measurement_names():
                 headers.append(f"{esc} {measurement}")
@@ -176,7 +179,8 @@ class Avian():
 
         # one row per timestamp
         for i in range(len(self.data_timestamps)):
-            data_row = [self.data_timestamps[i].strftime('%H_%M_%S_%f')]
+            data_row = [self.data_timestamps[i].strftime(
+                '%H_%M_%S_%f'), self.seconds_since_start[i]]
             for esc in self.get_esc_names():
                 for measurement in self.get_esc_measurement_names():
                     all_values = self.get_all_values(measurement, esc)
@@ -194,17 +198,26 @@ class Avian():
             writer = csv.writer(csv_file)
             writer.writerows(csv_data)
 
-        self.serial_reader.export_raw_data()
+        if hasattr(self, 'serial_reader'):
+            self.serial_reader.export_raw_data()
 
     def print_data(self):
         print(self.data)
+
+    def add_timestamps(self):
+        now_timestamp = datetime.now()
+        seconds_since_start = round(
+            (now_timestamp - self.start_time).total_seconds(), 3)
+        self.data_timestamps.append(now_timestamp)
+
+        self.seconds_since_start.append(seconds_since_start)
+        return now_timestamp
 
     def handle_data(self, data):
         if (not "Data:" in data):
             return
 
-        now_timestamp = datetime.now()
-        self.data_timestamps.append(now_timestamp)
+        now_timestamp = self.add_timestamps()
         data_array = list(map(lambda str: int(str), data.split()[1:]))
         split_data = {
             DRIVE_ESC_1: data_array[0:9],  # first 9
@@ -377,6 +390,7 @@ class TelemetryGUI(QWidget):
 
     def update_gui(self):
         if (self.use_fake_data):
+            self.avian.add_timestamps()
             for measurement in self.avian.get_robot_measurement_names():
                 self.avian.add_value(measurement, random.randint(-100, 0)
                                      if measurement == SIGNAL_STRENGTH
@@ -468,11 +482,11 @@ class TelemetryGUI(QWidget):
                 value_text
             )
             if measurement == TEMP and value != None:
-                if value >= 80:
+                if value >= 85:
                     style_sheet = 'background-color: red;'
-                elif value >= 70:
+                elif value >= 75:
                     style_sheet = 'background-color: orange;'
-                elif value >= 60:
+                elif value >= 68:
                     style_sheet = 'background-color: yellow;'
                 else:
                     style_sheet = 'color: black;'
