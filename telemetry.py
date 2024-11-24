@@ -262,7 +262,7 @@ class TelemetryGUI(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_gui)
-        # self.timer.start(1000)
+        self.timer.start(1000 if self.use_fake_data else 100)
 
     def update_gui(self):
         if (self.use_fake_data):
