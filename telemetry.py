@@ -39,11 +39,16 @@ class SerialReaderThread(QThread):
 
     def export_raw_data(self):
         now = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-        file_name = f"data/telemetry_{now}_raw.csv"
+        file_name = f"telemetry_{now}_raw.csv"
         with open(file_name, "w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerows(self.raw_data)
 
+
+DRIVE_ESC_1 = 'Drive ESC 1'
+DRIVE_ESC_2 = 'Drive ESC 2'
+WEAPON_ESC = 'Weapon ESC'
+ARM_ESC = 'Arm ESC'
 
 TEMP = 'Temp'
 RPM = 'RPM'
@@ -178,10 +183,15 @@ class Measurement():
 
 
 class ESC():
-    def __init__(self, name, measurements):
+    def __init__(self, name, measurements: list[Measurement]):
         self.name = name
-        self.measurements = measurements
+        self.measurements: dict[str, Measurement] = {}
+        for measurement in measurements:
+            self.measurements[measurement.name] = measurement
         self.init_card()
+
+    def __iter__(self):
+        return iter(self.measurements.values())
 
     def init_card(self):
         self.card = QWidget()
@@ -199,7 +209,7 @@ class ESC():
         measurement_grid = QGridLayout()
         measurement_grid.setHorizontalSpacing(8)
 
-        for m_index, measurement in enumerate(self.measurements):
+        for m_index, measurement in enumerate(self):
             measurement_grid.addWidget(
                 measurement.name_label, m_index, 0, alignment=Qt.AlignRight)
             measurement_grid.addWidget(measurement.min_label, m_index, 1)
@@ -210,23 +220,106 @@ class ESC():
 
 
 class Robot():
-    def __init__(self, name, escs, serial_port):
+    def __init__(self, name, escs: list[ESC], serial_port):
         self.name = name
-        self.escs = escs
+        self.escs: dict[str, ESC] = {}
+        for esc in escs:
+            self.escs[esc.name] = esc
+
+        self.timestamps = []
+        self.seconds_since_start = []
+        self.start_time = datetime.now()
 
         if serial_port != None:
             self.serial_reader = SerialReaderThread(serial_port)
             self.serial_reader.new_data.connect(self.handle_data)
             self.serial_reader.start()
 
+    def __iter__(self):
+        return iter(self.escs.values())
+
+    def add_timestamps(self, now):
+        self.timestamps.append(now)
+        seconds_since_start = round(
+            (now - self.start_time).total_seconds(), 3)
+        self.seconds_since_start.append(seconds_since_start)
+
+    def handle_data(self, received_data):
+        if (not "Data:" in received_data):
+            return
+
+        now = datetime.now()
+        self.add_timestamps(now)
+
+        raw_data = list(map(lambda str: int(str), received_data.split()[1:]))
+        raw_data_by_esc = {
+            DRIVE_ESC_1: raw_data[0:9],  # first 9
+            DRIVE_ESC_2: raw_data[9:18],  # next 9
+            WEAPON_ESC: raw_data[18:26],  # next 8
+            ARM_ESC: raw_data[26:34],  # last 8
+            SIGNAL_STRENGTH: raw_data[34]
+        }
+
+        def merge_bytes(byte1, byte2):
+            return (byte1 << 8) + byte2
+
+        parsed_esc_data = {}
+        for esc in [DRIVE_ESC_1, DRIVE_ESC_2]:
+            esc_data = raw_data_by_esc[esc]
+            parsed_esc_data[esc] = {
+                TEMP: esc_data[0],
+                VOLTAGE: merge_bytes(esc_data[1], esc_data[2]) / 100,
+                CURRENT: merge_bytes(esc_data[3], esc_data[4]) / 100,
+                CONSUMPTION: merge_bytes(esc_data[5], esc_data[6]),
+                RPM: int(merge_bytes(esc_data[7], esc_data[8]) * 100 / 6)
+            }
+
+        for esc in [WEAPON_ESC, ARM_ESC]:
+            esc_data = raw_data_by_esc[esc]
+            scale_val = 2042
+            current = merge_bytes(esc_data[4], esc_data[5]) / scale_val * 50
+            delta_time_hours = (
+                now - self.timestamps[-1]).total_seconds() / 3600
+            consumption = current * 1000 * delta_time_hours
+            parsed_esc_data[esc] = {
+                TEMP: merge_bytes(esc_data[0], esc_data[1]) / scale_val * 30,
+                VOLTAGE: merge_bytes(esc_data[2], esc_data[3]) / scale_val * 20,
+                CURRENT: current,
+                CONSUMPTION: consumption,
+                RPM: int(merge_bytes(
+                    esc_data[6], esc_data[7]) / scale_val * 20416.66 / 7)
+            }
+
+        for esc in parsed_esc_data:
+            for measurement in parsed_esc_data[esc]:
+                value = parsed_esc_data[esc][measurement]
+                rounded_value = round(value)
+                self.add_value(esc, measurement, rounded_value)
+
     def add_random_values(self):
-        for esc in self.escs:
-            for measurement in esc.measurements:
+        for esc in self:
+            for measurement in esc:
                 random_value = random.randint(
                     measurement.minimum,
                     measurement.maximum * 2
                 )
                 measurement.add_value(random_value)
+
+    def add_value(self, esc, measurement, value):
+        self.escs[esc].measurements[measurement].add_value(value)
+
+    def mock_handle_data(self):
+        mock_data = 'Data:'
+        for _ in range(35):
+            random_num = random.randint(0, 100)
+            mock_data += ' '
+            mock_data += str(random_num)
+        print('MOCK ' + mock_data)
+        self.handle_data(mock_data)
+
+    def repaint(self):
+        for esc in self:
+            for measurement in esc:
                 measurement.update_value_bar()
 
 
@@ -257,7 +350,7 @@ class TelemetryGUI(QWidget):
         esc_grid.setSpacing(16)
         self.main_layout.addLayout(esc_grid)
 
-        for e_idx, esc in enumerate(self.robot.escs):
+        for e_idx, esc in enumerate(self.robot):
             esc_grid.addWidget(esc.card, e_idx // 2, e_idx % 2)
 
         self.timer = QTimer()
@@ -266,47 +359,50 @@ class TelemetryGUI(QWidget):
 
     def update_gui(self):
         if (self.use_fake_data):
-            self.robot.add_random_values()
+            self.robot.mock_handle_data()
+            # self.robot.add_random_values()
+        self.robot.repaint()
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    esc_drive_1 = ESC('Drive ESC 1', [
-        Measurement(TEMP, 25, 100),
-        Measurement(RPM, 0, 10000),
-        Measurement(CURRENT, 0, 30),
-        Measurement(CONSUMPTION, 0, 3000),
-        Measurement(INPUT_SIGNAL, 0, 100)
-    ])
+    escs = [
+        ESC(DRIVE_ESC_1, [
+            Measurement(TEMP, 25, 100),
+            Measurement(RPM, 0, 10000),
+            Measurement(CURRENT, 0, 30),
+            Measurement(CONSUMPTION, 0, 3000),
+            Measurement(VOLTAGE, 5, 28, False),
+            Measurement(INPUT_SIGNAL, 0, 100)
+        ]),
+        ESC(DRIVE_ESC_2, [
+            Measurement(TEMP, 25, 100),
+            Measurement(RPM, 0, 10000),
+            Measurement(CURRENT, 0, 30),
+            Measurement(CONSUMPTION, 0, 3000),
+            Measurement(VOLTAGE, 5, 28, False),
+            Measurement(INPUT_SIGNAL, 0, 100)
+        ]),
+        ESC(WEAPON_ESC, [
+            Measurement(TEMP, 25, 100),
+            Measurement(RPM, 0, 20000),
+            Measurement(CURRENT, 0, 100),
+            Measurement(CONSUMPTION, 0, 3000),
+            Measurement(VOLTAGE, 5, 28, False),
+            Measurement(INPUT_SIGNAL, 0, 100)
+        ]),
+        ESC(ARM_ESC, [
+            Measurement(TEMP, 25, 100),
+            Measurement(RPM, 0, 20000),
+            Measurement(CURRENT, 0, 100),
+            Measurement(CONSUMPTION, 0, 3000),
+            Measurement(VOLTAGE, 5, 28, False),
+            Measurement(INPUT_SIGNAL, 0, 100)
+        ])
+    ]
 
-    esc_drive_2 = ESC('Drive ESC 2', [
-        Measurement(TEMP, 25, 100),
-        Measurement(RPM, 0, 10000),
-        Measurement(CURRENT, 0, 30),
-        Measurement(CONSUMPTION, 0, 3000),
-        Measurement(INPUT_SIGNAL, 0, 100)
-    ])
-
-    esc_weapon = ESC('Weapon ESC', [
-        Measurement(TEMP, 25, 100),
-        Measurement(RPM, 0, 20000),
-        Measurement(CURRENT, 0, 100),
-        Measurement(CONSUMPTION, 0, 3000),
-        Measurement(INPUT_SIGNAL, 0, 100)
-    ])
-
-    esc_arm = ESC('Arm ESC', [
-        Measurement(TEMP, 25, 100),
-        Measurement(RPM, 0, 20000),
-        Measurement(CURRENT, 0, 100),
-        Measurement(CONSUMPTION, 0, 3000),
-        Measurement(INPUT_SIGNAL, 0, 100)
-    ])
-
-    avian = Robot('Colossal Avian', [
-        esc_drive_1, esc_drive_2, esc_weapon, esc_arm
-    ], None)
+    avian = Robot('Colossal Avian', escs, None)
 
     window = TelemetryGUI(avian)
     window.showMaximized()
