@@ -57,13 +57,15 @@ class SerialReaderThread(QThread):
             if self.serial_port.in_waiting:
                 line = self.serial_port.readline().decode().strip()
                 self.new_data.emit(line)
-                self.timestamps.append(datetime.now())
+                now = datetime.now()
+                self.timestamps.append(now)
                 self.raw_data.append(line)
-                print(line)
+                now_str = f"{now.strftime('%H_%M_%S.')}{round(now.microsecond / 10000):02d}"
+                print(now_str, line)
 
     def export_raw_data(self):
         now = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-        file_name = f"data/avian_data_{now}_raw.csv"
+        file_name = f"avian_data_{now}_raw.csv"
         with open(file_name, "w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerows(self.raw_data)
@@ -203,7 +205,7 @@ class Avian():
                     all_values) > i else None)
             csv_data.append(data_row)
 
-        file_name = f"data/avian_data_{timestamp}.csv"
+        file_name = f"avian_data_{timestamp}.csv"
         with open(file_name, "w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerows(csv_data)
@@ -298,8 +300,10 @@ class TelemetryGUI(QWidget):
 
         if len(self.port_names) > 0:
             self.avian = Avian(self.port_names[0])
+            print(f"PORT {self.port_names[0]}")
         else:
             self.avian = Avian(None)
+            print("NO PORTS")
 
         self.displayed_data = {}
         self.use_fake_data = sys.argv[1] if len(sys.argv) >= 2 else False
