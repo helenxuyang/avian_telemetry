@@ -281,21 +281,20 @@ class ESC():
         self.card.setLayout(card_layout)
 
         self.name_label = QLabel(self.name)
-        name_font = QFont(FONT_FAMILY, 20, QFont.Bold)
+        name_font = QFont(FONT_FAMILY, 16, QFont.Bold)
         self.name_label.setFont(name_font)
         card_layout.addWidget(self.name_label)
 
-        measurement_grid = QGridLayout()
-        measurement_grid.setHorizontalSpacing(8)
-        for m_index, measurement in enumerate(self):
+        for measurement in self:
             if measurement.is_shown:
-                measurement_grid.addWidget(
-                    measurement.name_label, m_index, 0, alignment=Qt.AlignRight)
-                measurement_grid.addWidget(measurement.min_label, m_index, 1)
-                measurement_grid.addWidget(measurement.value_bar, m_index, 2)
-                measurement_grid.addWidget(measurement.max_label, m_index, 3)
-                measurement_grid.addWidget(measurement.graph, m_index, 4)
-        card_layout.addLayout(measurement_grid)
+                card_layout.addWidget(measurement.name_label)
+                measurements_row = QHBoxLayout()
+                measurements_row.addWidget(measurement.min_label)
+                measurements_row.addWidget(measurement.value_bar, 1)
+                measurements_row.addWidget(measurement.max_label)
+                measurements_row.addWidget(measurement.graph, 1)
+
+            card_layout.addLayout(measurements_row, 1)
         self.card.setLayout(card_layout)
 
 
@@ -501,7 +500,7 @@ class TelemetryGUI(QWidget):
         self.main_layout.addLayout(self.get_robot_column())
 
         self.timer = QTimer()
-        self.timer.start(100 if self.use_fake_data else 100)
+        self.timer.start(1000 if self.use_fake_data else 50)
 
         self.start_recording()
 
