@@ -1,11 +1,11 @@
 from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import QPainter, QColor, QBrush
+from PyQt5.QtGui import QPainter, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QFont
 from PyQt5.QtWidgets import QApplication, QWidget
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox, QProgressBar, QScrollArea
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox, QProgressBar
 from PyQt5.QtGui import QFont, QPainter, QColor
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 import pyqtgraph as pg
@@ -512,6 +512,14 @@ class TelemetryGUI(QWidget):
         robot_name_label = QLabel("Colossal Avian")
         robot_name_label.setFont(QFont(FONT_FAMILY, 32, QFont.Bold))
         robot_column.addWidget(robot_name_label)
+
+        robot_img = QLabel(self)
+        pixmap = QPixmap('avian.png')
+        robot_img.setPixmap(pixmap)
+        robot_img.setFixedHeight(200)
+        robot_img.setFixedWidth(250)
+        robot_img.setScaledContents(True)
+        robot_column.addWidget(robot_img)
 
         for m_index, measurement in enumerate(self.robot.measurements.values()):
             if (measurement.is_shown):
