@@ -210,10 +210,13 @@ class Measurement():
         self.graph.plot(self.values, pen=self.pen_options)
         num_values = len(self.values)
         n = 50
-        min_y = min(self.values) if num_values > 0 else self.minimum
-        max_y = max(self.values) if num_values > 0 else self.maximum
+        min_x = max(num_values-1-n, 0)
+        max_x = num_values-1
+        min_y = self.minimum
+        max_y = self.maximum
+
         self.graph.getPlotItem().getViewBox().setRange(
-            xRange=(max(num_values-1-n, 0), num_values-1), yRange=(min_y, max_y))
+            xRange=(min_x, max_x), yRange=(min_y, max_y))
 
     def add_random_value(self):
         random_value = random.randint(
@@ -497,7 +500,7 @@ class TelemetryGUI(QWidget):
         self.main_layout.addLayout(self.get_robot_column())
 
         self.timer = QTimer()
-        self.timer.start(1000 if self.use_fake_data else 100)
+        self.timer.start(100 if self.use_fake_data else 100)
 
         self.start_recording()
 
@@ -544,8 +547,8 @@ class TelemetryGUI(QWidget):
 
     def update_gui(self):
         if (self.use_fake_data):
-            self.robot.mock_handle_data()
-            # self.robot.add_random_values()
+            # self.robot.mock_handle_data()
+            self.robot.add_random_values()
         self.robot.repaint()
 
     def start_recording(self):
