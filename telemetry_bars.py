@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox, QProgressBar
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox, QProgressBar, QSizePolicy
 from PyQt5.QtGui import QFont, QPainter, QPixmap
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 import pyqtgraph as pg
@@ -148,11 +148,18 @@ class Measurement():
 
     def init_name_label(self, name):
         self.name_label = QLabel(name + "  ")
-        self.name_label.setFont(QFont(FONT_FAMILY, 18, QFont.Bold))
+        self.name_label.setFont(
+            QFont(FONT_FAMILY, 24, QFont.Bold))
+        self.name_label.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Minimum)
 
     def init_value_label(self, unit):
         self.value_label = QLabel(f"{self.get_current_value()} {unit}")
         self.value_label.setFont(QFont(FONT_FAMILY, 18, QFont.Bold))
+        self.value_label.setFont(
+            QFont(FONT_FAMILY, 24, QFont.Normal))
+        self.value_label.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Minimum)
 
     def init_value_bar(self, minimum, maximum, unit):
         self.value_bar = CustomProgressBar(unit)
@@ -502,6 +509,7 @@ class TelemetryGUI(QWidget):
         robot_column = QVBoxLayout()
         margin = 16
         robot_column.setContentsMargins(margin, margin, margin, margin)
+        robot_column.setSpacing(8)
 
         robot_name_label = QLabel("Colossal Avian")
         robot_name_label.setFont(QFont(FONT_FAMILY, 32, QFont.Bold))
@@ -517,22 +525,13 @@ class TelemetryGUI(QWidget):
 
         for m_index, measurement in enumerate(self.robot.measurements.values()):
             if (measurement.is_shown):
-                measurement.name_label.setFixedHeight(60)
-                measurement.name_label.setFont(
-                    QFont(FONT_FAMILY, 24, QFont.Bold))
-                robot_column.addWidget(
-                    measurement.name_label, m_index)
+                robot_column.addWidget(measurement.name_label)
+                robot_column.addWidget(measurement.value_label)
 
-                measurement.value_label.setFixedHeight(80)
-                measurement.value_label.setFont(
-                    QFont(FONT_FAMILY, 24, QFont.Normal))
-                robot_column.addWidget(
-                    measurement.value_label)
-
-        self.com_port_dropdown = QComboBox()
-        ports = list_ports.comports()
-        self.port_names = list(map(lambda port: port.name, ports))
-        self.com_port_dropdown.addItems(self.port_names)
+        # self.com_port_dropdown = QComboBox()
+        # ports = list_ports.comports()
+        # self.port_names = list(map(lambda port: port.name, ports))
+        # self.com_port_dropdown.addItems(self.port_names)
 
         export_button = QPushButton("Export to CSV")
         export_button.clicked.connect(self.robot.export_to_csv)
