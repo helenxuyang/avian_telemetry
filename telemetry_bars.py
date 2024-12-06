@@ -1,16 +1,10 @@
-from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import QPainter, QPixmap
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QApplication
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter, QFont
-from PyQt5.QtWidgets import QApplication, QWidget
-import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QComboBox, QProgressBar
-from PyQt5.QtGui import QFont, QPainter, QColor
+from PyQt5.QtGui import QFont, QPainter, QPixmap
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 import pyqtgraph as pg
 import csv
 import serial
+import sys
 from serial.tools import list_ports
 from datetime import datetime
 import random
@@ -525,13 +519,13 @@ class TelemetryGUI(QWidget):
             if (measurement.is_shown):
                 measurement.name_label.setFixedHeight(60)
                 measurement.name_label.setFont(
-                    QFont(FONT_FAMILY, 28, QFont.Bold))
+                    QFont(FONT_FAMILY, 24, QFont.Bold))
                 robot_column.addWidget(
                     measurement.name_label, m_index)
 
                 measurement.value_label.setFixedHeight(80)
                 measurement.value_label.setFont(
-                    QFont(FONT_FAMILY, 48, QFont.Normal))
+                    QFont(FONT_FAMILY, 24, QFont.Normal))
                 robot_column.addWidget(
                     measurement.value_label)
 
