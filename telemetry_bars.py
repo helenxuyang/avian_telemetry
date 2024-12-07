@@ -288,13 +288,15 @@ class ESC():
         for measurement in self:
             if measurement.is_shown:
                 card_layout.addWidget(measurement.name_label)
+                measurements = QWidget()
                 measurements_row = QHBoxLayout()
                 measurements_row.addWidget(measurement.min_label)
                 measurements_row.addWidget(measurement.value_bar, 1)
                 measurements_row.addWidget(measurement.max_label)
                 measurements_row.addWidget(measurement.graph, 1)
+                measurements.setLayout(measurements_row)
 
-            card_layout.addLayout(measurements_row, 1)
+            card_layout.addWidget(measurements, 1)
         self.card.setLayout(card_layout)
 
 
