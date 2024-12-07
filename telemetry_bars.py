@@ -295,7 +295,6 @@ class ESC():
                 measurements_row.addWidget(measurement.max_label)
                 measurements_row.addWidget(measurement.graph, 1)
                 measurements.setLayout(measurements_row)
-
             card_layout.addWidget(measurements, 1)
         self.card.setLayout(card_layout)
 
@@ -313,8 +312,8 @@ class Robot():
 
         self.measurements: dict[str, Measurement] = {
             BATTERY_VOLTAGE: Measurement(BATTERY_VOLTAGE, 5, 28, True),
-            TOTAL_CURRENT: Measurement(TOTAL_CURRENT, 0, 400, True),
-            TOTAL_CONSUMPTION: Measurement(TOTAL_CONSUMPTION, 0, 12000, True),
+            TOTAL_CURRENT: Measurement(TOTAL_CURRENT, 0, 400, False),
+            TOTAL_CONSUMPTION: Measurement(TOTAL_CONSUMPTION, 0, 12000, False),
             SIGNAL_STRENGTH: SignalStrengthMeasurement(SIGNAL_STRENGTH, -100, 0, True),
         }
 
@@ -513,10 +512,14 @@ class TelemetryGUI(QWidget):
         robot_column.setSpacing(8)
 
         robot_name_label = QLabel("Colossal Avian")
+        robot_name_label.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Minimum)
         robot_name_label.setFont(QFont(FONT_FAMILY, 32, QFont.Bold))
         robot_column.addWidget(robot_name_label)
 
         robot_img = QLabel(self)
+        robot_img.setSizePolicy(
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
         pixmap = QPixmap('avian.png')
         robot_img.setPixmap(pixmap)
         robot_img.setFixedHeight(200)
@@ -526,7 +529,11 @@ class TelemetryGUI(QWidget):
 
         for m_index, measurement in enumerate(self.robot.measurements.values()):
             if (measurement.is_shown):
+                measurement.name_label.setSizePolicy(
+                    QSizePolicy.Preferred, QSizePolicy.Minimum)
                 robot_column.addWidget(measurement.name_label)
+                measurement.value_label.setSizePolicy(
+                    QSizePolicy.Preferred, QSizePolicy.Minimum)
                 robot_column.addWidget(measurement.value_label)
 
         # self.com_port_dropdown = QComboBox()
@@ -535,13 +542,20 @@ class TelemetryGUI(QWidget):
         # self.com_port_dropdown.addItems(self.port_names)
 
         export_button = QPushButton("Export to CSV")
+        export_button.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Minimum)
         export_button.clicked.connect(self.robot.export_to_csv)
         robot_column.addWidget(export_button)
 
         self.stop_button = QPushButton("Pause recording")
+        self.stop_button.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Minimum)
         robot_column.addWidget(self.stop_button)
 
-        clear_button = QPushButton("Clear data")
+        clear_button = QPushButton(
+            "Clear data" + " (autosaves)" if self.should_auto_save else "")
+        clear_button.setSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.Minimum)
         clear_button.clicked.connect(self.clear_recording)
         robot_column.addWidget(clear_button)
 
